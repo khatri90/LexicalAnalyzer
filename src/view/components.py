@@ -1,81 +1,133 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk
 from .theme import Theme
 
-class ModernButton(tk.Button):
+class TextLineNumbers(tk.Canvas):
     """
-    A unified button style consistent across the application.
+    A canvas to display line numbers for a text widget.
     """
-    def __init__(self, parent, text, command=None, is_primary=False, **kwargs):
-        bg_color = Theme.PRIMARY if is_primary else "white"
-        fg_color = Theme.TEXT_WHITE if is_primary else Theme.TEXT_MAIN
-        
-        super().__init__(parent, text=text, command=command,
-                         bg=bg_color, fg=fg_color,
-                         relief="flat", bd=0,
-                         padx=15, pady=5,
-                         cursor="hand2",
-                         font=Theme.FONT_BOLD if is_primary else Theme.FONT_MAIN,
-                         activebackground=Theme.PRIMARY_HOVER if is_primary else "#e2e8f0",
-                         activeforeground=fg_color,
-                         **kwargs)
+    def __init__(self, *args, **kwargs):
+        tk.Canvas.__init__(self, *args, **kwargs)
+        self.textwidget = None
 
-class CodeEditor(scrolledtext.ScrolledText):
+    def attach(self, text_widget):
+        self.textwidget = text_widget
+
+    def redraw(self, *args):
+        '''Redraw line numbers'''
+        self.delete("all")
+        if not self.textwidget:
+            return
+
+        i = self.textwidget.index("@0,0")
+        while True:
+            dline= self.textwidget.dlineinfo(i)
+            if dline is None: break
+            y = dline[1]
+            linenum = str(i).split(".")[0]
+            self.create_text(width - 5, y, anchor="ne",
+                             text=linenum,
+                             fill=Theme.TEXT_SECONDARY,
+                             font=Theme.FONT_CODE)
+            i = self.textwidget.index("%s+1line" % i)
+
+# Helper for width of linenumber canvas
+width = 40
+
+class CodeEditor(tk.Frame):
     """
-    A code editor widget with line numbering gutter placeholders involved (simplified for this task).
-    Visual enhancements: minimalist border, code font.
+    A composite widget with line numbers and a text editor.
     """
     def __init__(self, parent, **kwargs):
-        super().__init__(parent, 
-                         font=Theme.FONT_CODE, 
-                         bg=Theme.BG_INPUT, 
-                         fg=Theme.TEXT_MAIN,
-                         relief="flat", 
-                         padx=5, pady=5,
-                         **kwargs)
-        self.configure(selectbackground=Theme.PRIMARY, selectforeground="white")
+        super().__init__(parent, bg=Theme.BG_INPUT, bd=1, relief="solid")
+        
+        self.text = tk.Text(self,
+                            font=Theme.FONT_CODE,
+                            bg=Theme.BG_INPUT,
+                            fg=Theme.TEXT_MAIN,
+                            relief="flat",
+                            bd=0,
+                            undo=True,
+                            wrap="none")  # No wrap for code
+        
+        self.linenumbers = TextLineNumbers(self, width=width, bg=Theme.BG_MAIN, bd=0, highlightthickness=0)
+        self.linenumbers.attach(self.text)
+        
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.text.yview)
+        self.hsb = ttk.Scrollbar(self, orient="horizontal", command=self.text.xview)
+        
+        self.text.configure(yscrollcommand=self.vsb.set, xscrollcommand=self.hsb.set)
+        
+        # Grid Layout
+        self.linenumbers.grid(row=0, column=0, sticky="ns")
+        self.text.grid(row=0, column=1, sticky="nsew")
+        self.vsb.grid(row=0, column=2, sticky="ns")
+        self.hsb.grid(row=1, column=0, columnspan=2, sticky="ew")
+        
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        
+        # Events
+        self.text.bind("<<Change>>", self._on_change)
+        self.text.bind("<Configure>", self._on_change)
+        self.text.bind("<KeyRelease>", self._on_change)
+        self.text.bind("<MouseWheel>", self._on_change)
+        self.text.bind("<Button-1>", self._on_change)
+        
+        # Selection Style
+        self.text.configure(selectbackground=Theme.PRIMARY, selectforeground=Theme.PRIMARY_FG)
 
-class TokenTable(ttk.Treeview):
+    def _on_change(self, event=None):
+        self.linenumbers.redraw()
+
+    # Proxy methods to behave like a Text widget
+    def get(self, *args, **kwargs): return self.text.get(*args, **kwargs)
+    def insert(self, *args, **kwargs): 
+        self.text.insert(*args, **kwargs)
+        self._on_change()
+    def delete(self, *args, **kwargs): 
+        self.text.delete(*args, **kwargs)
+        self._on_change()
+    def see(self, *args): self.text.see(*args)
+
+
+class TokenTable(tk.Frame):
     """
-    A styled Treeview for displaying tokens.
+    A Token Table with integrated scrollbar.
     """
     def __init__(self, parent, **kwargs):
-        style = ttk.Style()
-        style.theme_use("clam")
+        super().__init__(parent, bg=Theme.BG_PANEL)
         
-        # Configure Treeview colors to match theme
-        style.configure("Treeview",
-                        background=Theme.BG_PANEL,
-                        foreground=Theme.TEXT_MAIN,
-                        rowheight=25,
-                        fieldbackground=Theme.BG_PANEL,
-                        font=Theme.FONT_CODE)
+        self.tree = ttk.Treeview(self, columns=("Index", "Type", "Value", "Line", "Col"), show="headings")
         
-        style.configure("Treeview.Heading",
-                        background=Theme.BG_MAIN,
-                        foreground=Theme.TEXT_MAIN,
-                        relief="flat",
-                        font=Theme.FONT_BOLD)
+        # Scrollbar
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=self.vsb.set)
         
-        style.map("Treeview", background=[('selected', Theme.PRIMARY)])
+        # Layout
+        self.tree.pack(side="left", fill="both", expand=True)
+        self.vsb.pack(side="right", fill="y")
         
-        super().__init__(parent, columns=("Index", "Type", "Value", "Line", "Col"), show="headings", **kwargs)
+        # Config Columns
+        self.tree.heading("Index", text="#")
+        self.tree.column("Index", width=50, anchor="center")
         
-        self.heading("Index", text="#")
-        self.column("Index", width=40, anchor="center")
+        self.tree.heading("Type", text="Token Type")
+        self.tree.column("Type", width=150, anchor="w")
         
-        self.heading("Type", text="Token Type")
-        self.column("Type", width=120, anchor="w")
+        self.tree.heading("Value", text="Value")
+        self.tree.column("Value", width=250, anchor="w")
         
-        self.heading("Value", text="Value")
-        self.column("Value", width=200, anchor="w")
+        self.tree.heading("Line", text="Ln")
+        self.tree.column("Line", width=60, anchor="center")
         
-        self.heading("Line", text="Ln")
-        self.column("Line", width=40, anchor="center")
+        self.tree.heading("Col", text="Col")
+        self.tree.column("Col", width=60, anchor="center")
         
-        self.heading("Col", text="Col")
-        self.column("Col", width=40, anchor="center")
+        # Tags for styling
+        self.tree.tag_configure('error', background="#fee2e2", foreground="#ef4444")
         
-        # Striped rows tag
-        self.tag_configure('even', background=Theme.BG_INPUT)
-        self.tag_configure('error', background="#fee2e2", foreground="#ef4444")
+    # Proxy methods
+    def get_children(self): return self.tree.get_children()
+    def delete(self, item): self.tree.delete(item)
+    def insert(self, parent, index, iid=None, **kwargs): return self.tree.insert(parent, index, iid, **kwargs)

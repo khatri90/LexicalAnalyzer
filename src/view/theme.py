@@ -1,41 +1,115 @@
+import tkinter as tk
+from tkinter import ttk
+
 class Theme:
     """
     Defines the color palette and constants for the professional UI.
-    Using a 'Dracula'-inspired dark theme or a clean corporate slate theme.
-    Let's go with a modern 'Slate' Business Theme.
+    Implements a coherent design system for the application.
     """
     
-    # Colors
-    PRIMARY = "#3b82f6"       # Bright Blue
-    PRIMARY_HOVER = "#2563eb" # Darker Blue
-    SECONDARY = "#64748b"     # Slate Grey
+    # --- Color Palette (Slate & Blue) ---
+    PRIMARY         = "#2563eb"       # Vibrant Blue
+    PRIMARY_HOVER   = "#1d4ed8"       # Darker Blue
+    PRIMARY_FG      = "#ffffff"       # White text on primary
     
-    BG_MAIN = "#f0f2f5"       # Very Light Grey (App Background)
-    BG_PANEL = "#ffffff"      # White (Panels)
-    BG_INPUT = "#f8fafc"      # Lightest Slate
+    BG_MAIN         = "#f1f5f9"       # Light Slate (App Background)
+    BG_PANEL        = "#ffffff"       # White (Card/Panel Background)
+    BG_INPUT        = "#f8fafc"       # Very Light Slate (Input/Editor)
     
-    TEXT_MAIN = "#1e293b"     # Dark Slate (Main text)
-    TEXT_DIM = "#64748b"      # Muted text
-    TEXT_WHITE = "#ffffff"
+    TEXT_MAIN       = "#0f172a"       # Dark Slate (Main text)
+    TEXT_SECONDARY  = "#64748b"       # Muted Slate (Labels/Secondary)
+    TEXT_DIM        = "#94a3b8"       # Dim text (Disabled/Placeholder)
     
-    BORDER = "#e2e8f0"        # Light Border
+    BORDER_LIGHT    = "#e2e8f0"       # Light Border
+    BORDER_FOCUS    = "#3b82f6"       # Focused Border
     
-    # Highlight Colors for Tokens
-    TOKEN_KEYWORD = "#7c3aed"    # Violet
-    TOKEN_IDENTIFIER = "#0f172a" # Dark Slate
-    TOKEN_NUMBER = "#059669"     # Emerald Green
-    TOKEN_STRING = "#ea580c"     # Orange
-    TOKEN_OPERATOR = "#0891b2"   # Cyan
-    TOKEN_DELIMITER = "#64748b"  # Slate
-    TOKEN_ERROR = "#dc2626"      # Red
+    # --- Syntax Highlighting ---
+    TOKEN_KEYWORD    = "#7c3aed"      # Violet
+    TOKEN_IDENTIFIER = "#334155"      # Slate
+    TOKEN_NUMBER     = "#059669"      # Emerald
+    TOKEN_STRING     = "#ea580c"      # Orange
+    TOKEN_OPERATOR   = "#0891b2"      # Cyan
+    TOKEN_COMMENT    = "#94a3b8"      # Light Slate
+    TOKEN_ERROR      = "#dc2626"      # Red
     
-    # Fonts
-    FONT_MAIN = ("Segoe UI", 10)
-    FONT_BOLD = ("Segoe UI", 10, "bold")
-    FONT_HEADER = ("Segoe UI", 12, "bold")
-    FONT_CODE = ("Consolas", 10)
+    # --- Typography ---
+    FONT_FAMILY      = "Segoe UI"
+    FONT_CODE_FAMILY = "Consolas"
     
-    # Dimensions
-    PADDING_SMALL = 5
-    PADDING_MEDIUM = 10
-    PADDING_LARGE = 15
+    FONT_MAIN        = (FONT_FAMILY, 10)
+    FONT_BOLD        = (FONT_FAMILY, 10, "bold")
+    FONT_HEADER      = (FONT_FAMILY, 14, "bold")
+    FONT_CODE        = (FONT_CODE_FAMILY, 11)
+    
+    @staticmethod
+    def configure_style(root):
+        """
+        Configures the ttk.Style for the application.
+        """
+        style = ttk.Style(root)
+        style.theme_use('clam')  # 'clam' provides a good base for customization
+        
+        # General Defaults
+        style.configure(".", 
+                        background=Theme.BG_MAIN, 
+                        foreground=Theme.TEXT_MAIN, 
+                        font=Theme.FONT_MAIN,
+                        borderwidth=0)
+        
+        # --- Frames ---
+        style.configure("Card.TFrame", background=Theme.BG_PANEL)
+        style.configure("Main.TFrame", background=Theme.BG_MAIN)
+        
+        # --- Buttons ---
+        # Primary Button
+        style.configure("Primary.TButton",
+                        background=Theme.PRIMARY,
+                        foreground=Theme.PRIMARY_FG,
+                        borderwidth=0,
+                        focuscolor=Theme.PRIMARY,
+                        padding=(15, 8),
+                        font=Theme.FONT_BOLD)
+        style.map("Primary.TButton",
+                  background=[('active', Theme.PRIMARY_HOVER), ('pressed', Theme.PRIMARY_HOVER)],
+                  foreground=[('active', Theme.PRIMARY_FG)])
+        
+        # Secondary/Default Button
+        style.configure("TButton",
+                        background=Theme.BG_PANEL,
+                        foreground=Theme.TEXT_MAIN,
+                        borderwidth=1,
+                        bordercolor=Theme.BORDER_LIGHT,
+                        lightcolor=Theme.BG_PANEL,
+                        darkcolor=Theme.BG_PANEL,
+                        padding=(15, 8),
+                        font=Theme.FONT_MAIN)
+        style.map("TButton",
+                  background=[('active', Theme.BG_INPUT)],
+                  bordercolor=[('active', Theme.BORDER_FOCUS)])
+
+        # --- Treeview (Token Table) ---
+        style.configure("Treeview",
+                        background=Theme.BG_PANEL,
+                        foreground=Theme.TEXT_MAIN,
+                        fieldbackground=Theme.BG_PANEL,
+                        font=Theme.FONT_CODE,
+                        rowheight=28,
+                        borderwidth=0)
+        
+        style.configure("Treeview.Heading",
+                        background=Theme.BG_INPUT,
+                        foreground=Theme.TEXT_SECONDARY,
+                        font=Theme.FONT_BOLD,
+                        borderwidth=0,
+                        relief="flat")
+        style.map("Treeview.Heading",
+                   background=[('active', Theme.BG_INPUT)])
+
+        # --- Scrollbars ---
+        style.configure("TScrollbar",
+                        background=Theme.BG_INPUT,
+                        troughcolor=Theme.BG_MAIN,
+                        borderwidth=0,
+                        arrowsize=12)
+        style.map("TScrollbar",
+                  background=[('active', Theme.BORDER_LIGHT)])
